@@ -1,9 +1,11 @@
 import os
 import uuid
 import io
+import struct
+import zlib
 import functools
 import pandas as pd
-from flask import Flask, render_template, request, jsonify, session, send_file
+from flask import Flask, render_template, request, jsonify, session, send_file, Response
 from db import upload_dataframe, get_tables, get_schema, execute_query, delete_table
 from executor import execute_with_retry
 from analytics import init_db, log_session, log_query, log_table_upload, get_stats
@@ -221,6 +223,58 @@ def clear_session_data():
     clear_session(session_id)
     session.clear()
     return jsonify({"success": True})
+
+
+# ── PWA routes ────────────────────────────────────────────
+@app.route("/manifest.json")
+def manifest():
+    return jsonify({
+        "name": "QueryMind",
+        "short_name": "QueryMind",
+        "description": "AI-Powered Natural Language to SQL Engine by Pratham Soni",
+        "start_url": "/",
+        "display": "standalone",
+        "background_color": "#010b18",
+        "theme_color": "#3b82f6",
+        "orientation": "any",
+        "icons": [
+            {"src": "/app-icon.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable"},
+            {"src": "/app-icon.png", "sizes": "512x512", "type": "image/png", "purpose": "any"}
+        ]
+    })
+
+
+@app.route("/sw.js")
+def service_worker():
+    js = """
+self.addEventListener('install', () => self.skipWaiting());
+self.addEventListener('activate', e => e.waitUntil(self.clients.claim()));
+self.addEventListener('fetch', e => e.respondWith(fetch(e.request).catch(() => caches.match(e.request))));
+"""
+    return Response(js, mimetype="application/javascript")
+
+
+@app.route("/app-icon.png")
+def app_icon():
+    W = H = 192
+    rows = []
+    for y in range(H):
+        row = [0]
+        for x in range(W):
+            t = (x + y) / (W + H - 2)
+            r = int(29  + t * (124 - 29))
+            g = int(78  + t * (58  - 78))
+            b = int(216 + t * (237 - 216))
+            row += [r, g, b, 255]
+        rows.append(bytes(row))
+    raw  = b''.join(rows)
+    idat = zlib.compress(raw, 6)
+    def chunk(tag, data):
+        c = tag + data
+        return struct.pack('>I', len(data)) + tag + data + struct.pack('>I', zlib.crc32(c) & 0xFFFFFFFF)
+    ihdr = struct.pack('>IIBBBBB', W, H, 8, 6, 0, 0, 0)
+    png  = b'\x89PNG\r\n\x1a\n' + chunk(b'IHDR', ihdr) + chunk(b'IDAT', idat) + chunk(b'IEND', b'')
+    return Response(png, mimetype='image/png', headers={'Cache-Control': 'public, max-age=86400'})
 
 
 # ── admin ─────────────────────────────────────────────────

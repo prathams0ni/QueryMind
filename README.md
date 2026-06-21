@@ -249,6 +249,6 @@ MIT — see [LICENSE](LICENSE) for details.
 
 Built with ⚡ by **[Pratham Soni](https://github.com/pratham-soni)**
 
-*QueryMind — Open Source · 2025*
+*QueryMind — Open Source · 2026*
 
 </div>
