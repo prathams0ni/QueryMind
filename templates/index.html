@@ -712,7 +712,15 @@ async function initConfig() {
     const d = await (await fetch('/api/config')).json();
     state.hasBackendKey = d.has_backend_key;
     state.freeLimit     = d.free_limit || 3;
-    if (state.hasBackendKey) {
+    state.isOwner       = d.is_owner || false;
+    if (state.isOwner) {
+      document.getElementById('backendBadge').innerHTML = '<span class="badge-dot"></span> Owner Mode';
+      document.getElementById('backendBadge').style.display = 'inline-flex';
+      document.getElementById('apiKeyInput').placeholder = 'Owner — unlimited queries active';
+      document.getElementById('apiKeyInput').disabled = true;
+      document.getElementById('apiHint').innerHTML = '👑 Unlimited queries. No key needed.';
+      document.getElementById('quotaSection').style.display = 'none';
+    } else if (state.hasBackendKey) {
       document.getElementById('backendBadge').style.display = 'inline-flex';
       document.getElementById('apiKeyInput').placeholder = 'Optional — override default key';
       document.getElementById('apiHint').innerHTML = 'Default key active. Enter your own to override.';

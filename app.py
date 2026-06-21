@@ -59,7 +59,8 @@ def config():
     has_backend_key = bool(os.environ.get("GROQ_API_KEY", "").strip())
     return jsonify({
         "has_backend_key": has_backend_key,
-        "free_limit": FREE_QUERY_LIMIT
+        "free_limit": FREE_QUERY_LIMIT,
+        "is_owner": session.get("is_owner", False)
     })
 
 
@@ -119,6 +120,20 @@ def tables():
     })
 
 
+@app.route("/auth")
+def auth_admin():
+    key = request.args.get("key", "")
+    pwd = os.environ.get("ADMIN_PASSWORD", "")
+    if pwd and key == pwd:
+        session["is_owner"] = True
+        session.modified = True
+        return """<script>
+            localStorage.setItem('qm_owner','1');
+            window.location.href='/';
+        </script>"""
+    return "Invalid key", 403
+
+
 @app.route("/api/query", methods=["POST"])
 def query():
     session_id = get_session_id()
@@ -128,15 +143,16 @@ def query():
     question    = data.get("question", "").strip()
     user_key    = data.get("api_key", "").strip()
     backend_key = os.environ.get("GROQ_API_KEY", "").strip()
+    is_owner    = session.get("is_owner", False)
 
     if not question:
         return jsonify({"error": "Question is required"}), 400
 
-    # ── free query limit ──────────────────────────────────
+    # ── free query limit (skip for owner) ────────────────
     queries_used = session.get("query_count", 0)
     using_own_key = bool(user_key)
 
-    if not using_own_key:
+    if not is_owner and not using_own_key:
         if not backend_key:
             return jsonify({"error": "No API key configured.", "limit_reached": True}), 400
         if queries_used >= FREE_QUERY_LIMIT:
@@ -154,8 +170,8 @@ def query():
 
     result_data, final_query, error = execute_with_retry(session_id, schema, question, api_key)
 
-    # increment counter only for backend-key queries
-    if not using_own_key:
+    # increment counter only for non-owner backend-key queries
+    if not is_owner and not using_own_key:
         session["query_count"] = queries_used + 1
         session.modified = True
 
