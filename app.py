@@ -247,6 +247,24 @@ def clear_session_data():
 
 
 # ── PWA routes ────────────────────────────────────────────
+@app.route("/favicon.svg")
+def favicon_svg():
+    svg = (
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">'
+        '<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">'
+        '<stop offset="0%" stop-color="#1d4ed8"/>'
+        '<stop offset="100%" stop-color="#7c3aed"/>'
+        '</linearGradient></defs>'
+        '<rect width="32" height="32" rx="7" fill="url(#g)"/>'
+        '<ellipse cx="16" cy="10.5" rx="7.5" ry="2.4" fill="white" opacity=".95"/>'
+        '<path d="M8.5 10.5v5.5c0 1.3 3.4 2.4 7.5 2.4s7.5-1.1 7.5-2.4v-5.5" fill="white" opacity=".22"/>'
+        '<ellipse cx="16" cy="16" rx="7.5" ry="2.4" fill="white" opacity=".78"/>'
+        '<path d="M18.5 7l-4.5 7.5H18l-4 8 9.5-11h-4.5z" fill="#fbbf24"/>'
+        '</svg>'
+    )
+    return Response(svg, mimetype="image/svg+xml", headers={"Cache-Control": "public, max-age=86400"})
+
+
 @app.route("/manifest.json")
 def manifest():
     return jsonify({
